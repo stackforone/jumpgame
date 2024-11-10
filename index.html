@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Running Character Game</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000000;
+            font-family: 'Kanit', sans-serif;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            background-color: #000;
+            overflow: hidden;
+        }
+
+        .background-stars {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('https://www.transparenttextures.com/patterns/stardust.png');
+            opacity: 0.7;
+            animation: moveStars 30s linear infinite;
+        }
+
+        @keyframes moveStars {
+            from {
+                background-position: 0 0;
+            }
+            to {
+                background-position: -1000px 0;
+            }
+        }
+
+        .character {
+            position: absolute;
+            bottom: 0;
+            left: 50px;
+            width: 50px;
+            height: 50px;
+            background-color: #FF4500;
+            border-radius: 50%;
+            box-shadow: 0 0 20px 10px rgba(255, 69, 0, 0.7), 0 0 30px 15px rgba(255, 140, 0, 0.5);
+            animation: flicker 0.1s infinite alternate;
+            transition: transform 4s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        @keyframes flicker {
+            0% {
+                box-shadow: 0 0 20px 10px rgba(255, 69, 0, 0.7), 0 0 30px 15px rgba(255, 140, 0, 0.5);
+            }
+            100% {
+                box-shadow: 0 0 25px 15px rgba(255, 69, 0, 1), 0 0 40px 20px rgba(255, 140, 0, 0.7);
+            }
+        }
+
+        .obstacle {
+            position: absolute;
+            bottom: 0;
+            width: 30px;
+            background-color: #C21807;
+            animation: moveObstacle 3s linear infinite;
+        }
+
+        @keyframes moveObstacle {
+            from {
+                right: -30px;
+            }
+            to {
+                right: 100%;
+            }
+        }
+
+        .pause-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #FF8C00;
+            color: #fff;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+        }
+
+        .pause-button i {
+            margin-right: 5px;
+        }
+
+        .pause-menu {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-family: 'Kanit', sans-serif;
+        }
+
+        .pause-menu button {
+            background-color: #FF8C00;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .distance-display {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #fff;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+        }
+
+        .distance-display i {
+            margin-right: 5px;
+        }
+  
+        .pause-button {
+    font-family: 'Kanit', sans-serif; /* หรือฟอนต์ที่คุณต้องการ */
+}
+    </style>
+</head>
+<body>
+    <div class="game-container" id="gameContainer">
+        <div class="background-stars"></div>
+        <div class="character" id="character"></div>
+        <button class="pause-button" id="pauseButton"><i class="fas fa-pause-circle"></i> หยุด</button>
+        <div class="pause-menu" id="pauseMenu">
+            <p>เกมหยุด</p>
+            <button id="resumeButton">เล่นต่อ</button>
+            <button id="restartButton">เริ่มใหม่</button>
+        </div>
+        <div class="distance-display" id="distanceDisplay"><i class="fas fa-road"></i> ระยะทาง: 0</div>
+    </div>
+
+  <script>
+    const character = document.getElementById('character');
+    const gameContainer = document.getElementById('gameContainer');
+    const pauseButton = document.getElementById('pauseButton');
+    const pauseMenu = document.getElementById('pauseMenu');
+    const resumeButton = document.getElementById('resumeButton');
+    const restartButton = document.getElementById('restartButton');
+    const distanceDisplay = document.getElementById('distanceDisplay');
+
+    let isPaused = false;
+    let distance = 0;
+    let gameOver = false;
+    let isPauseButtonPressed = false; // เพิ่มตัวแปรนี้เพื่อเช็คการกดปุ่มหยุด
+    let gameIntervals = []; // เก็บรายการ interval ทั้งหมดที่ใช้ในเกม
+
+    // ฟังก์ชันกระโดด
+    function jump() {
+        if (!character.classList.contains('jump') && !isPaused && !gameOver && !isPauseButtonPressed) {
+            character.classList.add('jump');
+            character.style.transform = 'translateY(-200px)';
+            setTimeout(() => {
+                character.style.transform = 'translateY(0)';
+                character.classList.remove('jump');
+            }, 1000);
+        }
+    }
+
+    // เพิ่มการตรวจจับการกดปุ่มเพื่อกระโดด
+    document.addEventListener('keydown', (event) => {
+        if ((event.code === 'Space' || event.code === 'ArrowUp') && !gameOver && !isPaused) {
+            jump();
+        }
+    });
+
+    // เพิ่มการตรวจจับการแตะหน้าจอเพื่อกระโดดหรือเริ่มใหม่หลังจากชน
+    document.addEventListener('touchstart', (event) => {
+        if (event.target !== pauseButton && !isPaused && !isPauseButtonPressed) {
+            if (gameOver) {
+                location.reload(); // เริ่มเกมใหม่เมื่อแตะหลังจากชน
+            } else {
+                jump();
+            }
+        }
+    });
+
+    // เพิ่มการตรวจจับการคลิกเพื่อกระโดด (คอมพิวเตอร์)
+    document.addEventListener('click', (event) => {
+        if (event.target !== pauseButton && !isPaused && !isPauseButtonPressed) {
+            if (gameOver) {
+                location.reload(); // เริ่มเกมใหม่เมื่อคลิกหลังจากชน
+            } else {
+                jump();
+            }
+        }
+    });
+
+    // ฟังก์ชันหยุดเกม
+    pauseButton.addEventListener('click', (event) => {
+        event.stopPropagation(); // ป้องกันการส่ง event ต่อไปยัง parent element
+        isPaused = true;
+        isPauseButtonPressed = true; // กำหนดค่าเมื่อกดปุ่มหยุด
+        pauseMenu.style.display = 'block';
+        stopAllIntervals();
+        stopAnimations(); // หยุดการเคลื่อนไหวของตัวละครและสิ่งกีดขวาง
+    });
+
+    // ฟังก์ชันเล่นต่อ
+    resumeButton.addEventListener('click', () => {
+        isPaused = false;
+        isPauseButtonPressed = false; // รีเซ็ตค่าเมื่อเล่นต่อ
+        pauseMenu.style.display = 'none';
+        resumeAnimations(); // เริ่มการเคลื่อนไหวใหม่
+        startGame();
+    });
+
+    // ฟังก์ชันเริ่มใหม่
+    restartButton.addEventListener('click', () => {
+        location.reload();
+    });
+
+    // เพิ่มระยะทาง
+    const distanceInterval = setInterval(() => {
+        if (!isPaused && !gameOver) {
+            distance++;
+            distanceDisplay.textContent = `ระยะทาง: ${distance}`;
+        }
+    }, 100);
+    gameIntervals.push(distanceInterval);
+
+    // ฟังก์ชันสร้างสิ่งกีดขวาง
+    function createObstacle() {
+        if (!isPaused && !gameOver) {
+            const obstacle = document.createElement('div');
+            obstacle.classList.add('obstacle');
+            obstacle.style.right = '-30px';
+            obstacle.style.height = `${Math.floor(Math.random() * 100) + 50}px`;
+            gameContainer.appendChild(obstacle);
+
+            let obstacleInterval = setInterval(() => {
+                if (isPaused || gameOver) {
+                    clearInterval(obstacleInterval);
+                    return;
+                }
+
+                const characterRect = character.getBoundingClientRect();
+                const obstacleRect = obstacle.getBoundingClientRect();
+
+                if (
+                    characterRect.left < obstacleRect.right &&
+                    characterRect.right > obstacleRect.left &&
+                    characterRect.bottom > obstacleRect.top
+                ) {
+                    gameOver = true;
+                    stopAllIntervals(); // หยุดการทำงานทั้งหมด
+                    character.style.animation = 'none'; // หยุดอนิเมชันของตัวละคร
+                    character.style.transform = 'translateY(0)'; // ให้ตัวละครหยุดนิ่ง
+                    distanceDisplay.textContent = 'Game Over! แตะที่หน้าจอเพื่อเริ่มใหม่'; // แสดงข้อความเมื่อเกมจบ
+
+                    // หยุดทุกสิ่งกีดขวาง
+                    const obstacles = document.querySelectorAll('.obstacle');
+                    obstacles.forEach(obs => {
+                        obs.style.animation = 'none';
+                        obs.style.right = `${obs.getBoundingClientRect().right}px`;
+                    });
+
+                    return; // หยุดการทำงานของฟังก์ชันทันที
+                }
+            }, 10);
+
+            gameIntervals.push(obstacleInterval);
+
+            setTimeout(() => {
+                if (!isPaused && !gameOver) {
+                    gameContainer.removeChild(obstacle);
+                }
+            }, 3000);
+        }
+    }
+
+    // ฟังก์ชันหยุดทุก interval ที่กำลังทำงาน
+    function stopAllIntervals() {
+        gameIntervals.forEach(interval => clearInterval(interval));
+        gameIntervals = [];
+    }
+
+    // ฟังก์ชันหยุดการเคลื่อนไหวของตัวละครและสิ่งกีดขวาง
+    function stopAnimations() {
+        character.style.animationPlayState = 'paused'; // หยุดการเคลื่อนไหวของตัวละคร
+        const obstacles = document.querySelectorAll('.obstacle');
+        obstacles.forEach(obs => {
+            obs.style.animationPlayState = 'paused'; // หยุดการเคลื่อนไหวของสิ่งกีดขวาง
+        });
+    }
+
+    // ฟังก์ชันเริ่มการเคลื่อนไหวใหม่
+    function resumeAnimations() {
+        character.style.animationPlayState = 'running'; // เริ่มการเคลื่อนไหวของตัวละครใหม่
+        const obstacles = document.querySelectorAll('.obstacle');
+        obstacles.forEach(obs => {
+            obs.style.animationPlayState = 'running'; // เริ่มการเคลื่อนไหวของสิ่งกีดขวางใหม่
+        });
+    }
+
+    function startGame() {
+        let createObstacleInterval = setInterval(createObstacle, 2000);
+        gameIntervals.push(createObstacleInterval);
+    }
+
+    startGame();
+</script>
+</body>
+</html>
